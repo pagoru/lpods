@@ -1,0 +1,32 @@
+name: Linux
+
+# Builds and tests the Linux port. Runs on changes to it and to the upstream code it compiles.
+on:
+  push:
+    branches: [main]
+    paths: ["linux/**", "src/WPods/Core/**", "src/WPods/Nearby/**", ".github/workflows/linux.yml"]
+  pull_request:
+    paths: ["linux/**", "src/WPods/Core/**", "src/WPods/Nearby/**", ".github/workflows/linux.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: linux/global.json
+
+      - name: Install the BlueZ mock (dbus-daemon, python-dbusmock)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dbus-daemon python3-dbus python3-dbusmock
+
+      - name: Build and test
+        working-directory: linux
+        env:
+          LPODS_TEST_PYTHON: /usr/bin/python3
+        run: dotnet test --solution LPods.slnx -c Release

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LPods/LPods.csproj" />
+  <Project Path="LPods.Tests/LPods.Tests.csproj" />
+</Solution>
