@@ -3,7 +3,7 @@
 %global __os_install_post %{nil}
 
 Name:           lpods
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Battery, noise control and ear detection for AirPods
 License:        GPL-3.0-only
@@ -71,5 +71,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/io.github.pagoru.LPod
 %{_metainfodir}/io.github.pagoru.LPods.metainfo.xml
 
 %changelog
+* Mon Nov 23 2026 LPods maintainers <noreply@github.com> - 0.1.1-1
+- Fix a second title bar on KDE.
+
 * Mon Nov 23 2026 LPods maintainers <noreply@github.com> - 0.1.0-1
 - First release: battery, noise control, ear detection, media pause, conversation ducking, tray and nearby offers.
