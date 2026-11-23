@@ -2,6 +2,8 @@ using LPods.Platform;
 
 namespace LPods.Tests;
 
+// MPRIS and the tray share the process-wide session bus address.
+[Collection("session bus")]
 public sealed class MediaTests
 {
     [Fact]

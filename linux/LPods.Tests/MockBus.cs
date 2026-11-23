@@ -12,6 +12,7 @@ internal sealed class MockBus : IDisposable
     private readonly Process _daemon;
     private readonly Process? _bluez;
     private readonly string _python;
+    private bool _shared;
 
     private MockBus(Process daemon, Process? bluez, string python)
     {
@@ -23,10 +24,24 @@ internal sealed class MockBus : IDisposable
     /// <summary>A bus with BlueZ on it, as the system bus.</summary>
     public static Task<MockBus?> StartAsync() => StartAsync(bluez: true);
 
+    private static Task<MockBus?>? _session;
+
     /// <summary>
-    /// A bus for session services (DBUS_SESSION_BUS_ADDRESS), no BlueZ. Runs <paramref name="script"/> helpers with it.
+    /// A bus for session services (DBUS_SESSION_BUS_ADDRESS), no BlueZ. One per test process, shared by every test and
+    /// ended with the process: the D-Bus client library reads the session address only once.
     /// </summary>
-    public static Task<MockBus?> StartSessionAsync() => StartAsync(bluez: false);
+    public static Task<MockBus?> StartSessionAsync() => _session ??= StartSharedSessionAsync();
+
+    private static async Task<MockBus?> StartSharedSessionAsync()
+    {
+        MockBus? bus = await StartAsync(bluez: false);
+        if (bus is not null)
+        {
+            bus._shared = true;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => bus.Kill();
+        }
+        return bus;
+    }
 
     public Task RunScriptAsync(string script, params string[] args) => RunsAsync(_python, [Path.Combine(AppContext.BaseDirectory, script), .. args]).ContinueWith(
         t => t.Result ? Task.CompletedTask : throw new InvalidOperationException($"{script} {string.Join(' ', args)} failed"),
@@ -66,6 +81,14 @@ internal sealed class MockBus : IDisposable
         TaskScheduler.Default).Unwrap();
 
     public void Dispose()
+    {
+        if (!_shared)
+        {
+            Kill();
+        }
+    }
+
+    private void Kill()
     {
         _bluez?.Kill();
         // Helpers started on a session bus exit with it.

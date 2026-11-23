@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=LPods
+GenericName=AirPods
+Comment=Battery, noise control and ear detection for your AirPods
+Exec=lpods open
+Icon=io.github.pagoru.LPods
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=AirPods;Bluetooth;Battery;Noise cancellation;Headphones;
+StartupWMClass=io.github.pagoru.LPods
