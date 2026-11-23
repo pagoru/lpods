@@ -1,0 +1,147 @@
+name: Upstream sync
+
+# Checks FPNDev/wpods for new commits and opens (or updates) one PR into main from the upstream-sync branch.
+# The PR lists the new commits, whether the Linux build and tests still pass with them, and sorts the changed files:
+#   - shared code the Linux build compiles as-is (comes in with the merge),
+#   - Windows-only code, including the files Linux replaces in linux/LPods/Platform (check each fix by hand).
+# PRs opened with GITHUB_TOKEN don't trigger other workflows, so this job builds and tests the merge itself.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily, 07:00 in Madrid (winter time)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: FPNDev/wpods
+  UPSTREAM_BRANCH: main
+  BASE_BRANCH: main
+  SYNC_BRANCH: upstream-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream "${UPSTREAM_BRANCH}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for new commits
+        id: check
+        run: |
+          count=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "New upstream commits: $count"
+
+      - name: Merge upstream into the sync branch
+        if: steps.check.outputs.count != '0'
+        id: merge
+        run: |
+          git checkout -B "${SYNC_BRANCH}"
+          if git merge --no-ff --no-edit "upstream/${UPSTREAM_BRANCH}" -m "Merge upstream ${UPSTREAM_REPO}@$(git rev-parse --short "upstream/${UPSTREAM_BRANCH}")"; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            # Keep the conflicting files, then push upstream as-is so the PR shows the conflicts to resolve.
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            git checkout -B "${SYNC_BRANCH}" "upstream/${UPSTREAM_BRANCH}"
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.check.outputs.count != '0' && steps.merge.outputs.conflicts == 'false'
+        with:
+          global-json-file: linux/global.json
+
+      - name: Build and test Linux with the merge
+        if: steps.check.outputs.count != '0' && steps.merge.outputs.conflicts == 'false'
+        id: linux
+        working-directory: linux
+        env:
+          LPODS_TEST_PYTHON: /usr/bin/python3
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends dbus-daemon python3-dbus python3-dbusmock
+          if dotnet test --solution LPods.slnx -c Release > "$RUNNER_TEMP/linux.log" 2>&1; then
+            echo "result=passed" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failed" >> "$GITHUB_OUTPUT"
+          fi
+          tail -n 40 "$RUNNER_TEMP/linux.log"
+
+      - name: Push the sync branch
+        if: steps.check.outputs.count != '0'
+        run: git push --force origin "${SYNC_BRANCH}"
+
+      - name: Build PR description
+        if: steps.check.outputs.count != '0'
+        run: |
+          base=$(git merge-base "origin/${BASE_BRANCH}" "upstream/${UPSTREAM_BRANCH}")
+          git diff --name-only "$base" "upstream/${UPSTREAM_BRANCH}" > "$RUNNER_TEMP/files.txt"
+
+          # No Linux counterpart that merges in by itself: the service, native helper, installer, audio, Windows UI,
+          # and the upstream files that linux/LPods/Platform replaces under the same names.
+          windows_only='^(src/WPods\.Service/|native/|installer/|build\.ps1|src/WPods/Audio/|src/WPods/Ui/|src/WPods/Program\.cs|src/WPods/Core/(Native|ServicePipes|ServiceStatus|BluetoothLink|StartupRegistration|DefaultOutputWatcher|HandsFree)\.cs|src/WPods/Nearby/NearbyNative\.cs)'
+
+          {
+            echo "New commits from [${UPSTREAM_REPO}](https://github.com/${UPSTREAM_REPO}) since the last sync."
+            echo
+            if [ "${{ steps.merge.outputs.conflicts }}" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> The merge has conflicts. Resolve them locally:"
+              echo "> \`git fetch origin && git checkout ${SYNC_BRANCH} && git merge origin/${BASE_BRANCH}\`"
+              echo
+              echo "Conflicting files:"
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/conflicts.txt"
+            elif [ "${{ steps.linux.outputs.result }}" = "passed" ]; then
+              echo "**Linux build and tests: passed** with these changes merged."
+            else
+              echo "> [!CAUTION]"
+              echo "> **Linux build or tests failed** with these changes merged. See the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). A shared file probably now uses something the Linux platform layer doesn't have yet."
+            fi
+            echo
+            echo "## Commits (${{ steps.check.outputs.count }})"
+            git log --no-merges --reverse --format="- [\`%h\`](https://github.com/${UPSTREAM_REPO}/commit/%H) %s" "origin/${BASE_BRANCH}..upstream/${UPSTREAM_BRANCH}"
+            echo
+            echo "## Port to Linux by hand"
+            echo "Windows-only files. Check whether each change needs the same fix in \`linux/\` (files with the same name in \`linux/LPods/Platform\` replace them)."
+            if grep -E "$windows_only" "$RUNNER_TEMP/files.txt" > "$RUNNER_TEMP/win.txt"; then
+              sed 's/^/- [ ] `/; s/$/`/' "$RUNNER_TEMP/win.txt"
+            else
+              echo "_Nothing this time._"
+            fi
+            echo
+            echo "## Comes in with the merge"
+            if grep -vE "$windows_only" "$RUNNER_TEMP/files.txt" > "$RUNNER_TEMP/shared.txt"; then
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/shared.txt"
+            else
+              echo "_Nothing this time._"
+            fi
+          } > "$RUNNER_TEMP/body.md"
+
+      - name: Open or update the PR
+        if: steps.check.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Sync upstream (${{ steps.check.outputs.count }} new commits)"
+          pr=$(gh pr list --head "${SYNC_BRANCH}" --base "${BASE_BRANCH}" --state open --json number --jq '.[0].number')
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --head "${SYNC_BRANCH}" --base "${BASE_BRANCH}" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          fi

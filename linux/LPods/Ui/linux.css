@@ -1,0 +1,14 @@
+/* LPods: hides controls of upstream's pages that have no effect on Linux. Selectors follow ui/src/pages. */
+
+/* Windows settings page: Hands-Free, HD voice and low latency are Windows audio stack features. */
+.wp-row:has(#hfpTitle),
+.wp-row:has(#hdVoiceTitle),
+.wp-row:has(#latencyTitle),
+.wp-row:has(#latencyMicTitle),
+/* Mic modes, Mixer and Hotkeys: the first three navigation rows of the app group. */
+.wp-page > .wp-group:nth-of-type(2) > .wp-list > .wp-row--nav:nth-child(-n + 3),
+/* Updates: the package manager updates LPods. */
+.wp-group:has(#autoUpdateTitle),
+.wp-update {
+  display: none !important;
+}

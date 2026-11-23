@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>lpods</AssemblyName>
+    <RootNamespace>LPods</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LPods.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.2" />
+  </ItemGroup>
+
+  <!--
+    Platform-neutral upstream code, compiled unchanged. Windows-only upstream files (Native, ServicePipes,
+    BluetoothLink, HandsFree, DefaultOutputWatcher, ServiceStatus, NearbyNative, MicCatalog) are replaced by
+    Platform/*, which keeps their names and signatures.
+  -->
+  <ItemGroup>
+    <Compile Include="$(UpstreamDir)Core\Aap.cs" Link="Upstream\Core\Aap.cs" />
+    <Compile Include="$(UpstreamDir)Core\AapSession.cs" Link="Upstream\Core\AapSession.cs" />
+    <Compile Include="$(UpstreamDir)Core\ConnectionManager.cs" Link="Upstream\Core\ConnectionManager.cs" />
+    <Compile Include="$(UpstreamDir)Core\DeviceState.cs" Link="Upstream\Core\DeviceState.cs" />
+    <Compile Include="$(UpstreamDir)Core\Log.cs" Link="Upstream\Core\Log.cs" />
+    <Compile Include="$(UpstreamDir)Core\Mac.cs" Link="Upstream\Core\Mac.cs" />
+    <Compile Include="$(UpstreamDir)Core\Models.cs" Link="Upstream\Core\Models.cs" />
+    <Compile Include="$(UpstreamDir)Core\SettingsStore.cs" Link="Upstream\Core\SettingsStore.cs" />
+    <Compile Include="$(UpstreamDir)Nearby\NearbyService.cs" Link="Upstream\Nearby\NearbyService.cs" />
+    <Compile Include="$(UpstreamDir)Nearby\Proximity.cs" Link="Upstream\Nearby\Proximity.cs" />
+    <Compile Include="$(UpstreamDir)Ui\Localization.cs" Link="Upstream\Ui\Localization.cs" />
+    <Compile Include="$(UpstreamDir)Ui\Protocol.cs" Link="Upstream\Ui\Protocol.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Ui\linux.js;Ui\linux.css" Link="ui\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)web\**" Link="web\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)locales\*.json" Link="locales\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

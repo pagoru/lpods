@@ -1,0 +1,77 @@
+name: Linux
+
+# Builds and tests the Linux port on Ubuntu, then builds the Fedora RPM (and runs the tests again) in a Fedora container.
+# Runs on changes to the port and to the upstream code it compiles.
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "linux/**"
+      - "ui/**"
+      - "src/WPods/Core/**"
+      - "src/WPods/Nearby/**"
+      - "src/WPods/Ui/Protocol.cs"
+      - "src/WPods/Ui/Localization.cs"
+      - "src/WPods/locales/**"
+      - ".github/workflows/linux.yml"
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: linux/global.json
+
+      - name: Install the BlueZ and tray mocks (dbus-daemon, python-dbusmock, PyGObject)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dbus-daemon python3-dbus python3-dbusmock python3-gi
+
+      - name: Build and test
+        working-directory: linux
+        env:
+          LPODS_TEST_PYTHON: /usr/bin/python3
+        run: dotnet test --solution LPods.slnx -c Release
+
+  fedora:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install build tools and the test mocks
+        run: >
+          dnf install -y --setopt=install_weak_deps=False
+          dotnet-sdk-10.0 nodejs npm rpm-build desktop-file-utils systemd-rpm-macros git tar gzip
+          dbus-daemon python3-dbus python3-dbusmock python3-gobject
+
+      - uses: actions/checkout@v4
+
+      - name: Build the web pages
+        run: cd ui && npm ci --no-audit --no-fund && node build.mjs
+
+      - name: Test
+        working-directory: linux
+        env:
+          LPODS_TEST_PYTHON: /usr/bin/python3
+        run: dotnet test --solution LPods.slnx -c Release
+
+      - name: Build the RPM
+        run: |
+          version=$(rpmspec -q --qf '%{version}\n' linux/packaging/lpods.spec | head -1)
+          mkdir -p ~/rpmbuild/SOURCES
+          git config --global --add safe.directory "$PWD"
+          git archive --prefix="lpods-$version/" -o ~/rpmbuild/SOURCES/lpods-$version.tar.gz HEAD
+          rpmbuild -bb linux/packaging/lpods.spec
+          rpm -qpl ~/rpmbuild/RPMS/noarch/lpods-*.rpm
+          rpm -qp --requires ~/rpmbuild/RPMS/noarch/lpods-*.rpm
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lpods-rpm
+          path: ~/rpmbuild/RPMS/noarch/lpods-*.rpm

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pagoru.LPods</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>LPods</name>
+  <summary>Battery, noise control and ear detection for your AirPods</summary>
+  <description>
+    <p>LPods is a Linux port of WPods. It talks to your AirPods over Bluetooth with Apple's accessory protocol and shows their battery, switches between noise cancellation, transparency and adaptive, and pauses your media when you take an AirPod out.</p>
+    <p>LPods is an independent project. It isn't made, sponsored, endorsed or supported by Apple.</p>
+  </description>
+  <launchable type="desktop-id">io.github.pagoru.LPods.desktop</launchable>
+  <url type="homepage">https://github.com/pagoru/lpods</url>
+  <url type="bugtracker">https://github.com/pagoru/lpods/issues</url>
+  <provides>
+    <binary>lpods</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-23"/>
+  </releases>
+</component>
