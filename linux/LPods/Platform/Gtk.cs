@@ -154,6 +154,24 @@ internal static unsafe partial class Gtk
     public static partial void gtk_window_set_decorated(nint window, int decorated);
 
     [LibraryImport(GtkLib)]
+    public static partial void gtk_window_set_titlebar(nint window, nint titlebar);
+
+    [LibraryImport(GtkLib)]
+    public static partial nint gtk_fixed_new();
+
+    [LibraryImport(GtkLib)]
+    public static partial nint gtk_css_provider_new();
+
+    [LibraryImport(GtkLib)]
+    public static partial int gtk_css_provider_load_from_data(nint provider, [MarshalAs(UnmanagedType.LPUTF8Str)] string data, nint length, nint error);
+
+    [LibraryImport(GtkLib)]
+    public static partial nint gdk_screen_get_default();
+
+    [LibraryImport(GtkLib)]
+    public static partial void gtk_style_context_add_provider_for_screen(nint screen, nint provider, uint priority);
+
+    [LibraryImport(GtkLib)]
     public static partial void gtk_window_set_position(nint window, int position);
 
     [LibraryImport(GtkLib)]

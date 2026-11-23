@@ -30,7 +30,9 @@ internal sealed unsafe class MainWindow
         _window = Gtk.gtk_window_new(Gtk.GtkWindowToplevel);
         Gtk.gtk_window_set_title(_window, title);
         Gtk.gtk_window_set_icon_name(_window, GtkLoop.AppId);
-        Gtk.gtk_window_set_decorated(_window, 0);
+        // An empty client-side titlebar instead of set_decorated(false): compositors such as KWin draw their own frame
+        // around an "undecorated" window, but leave a window that draws its own titlebar alone. The page draws the real one.
+        Gtk.gtk_window_set_titlebar(_window, EmptyTitlebar());
         Gtk.gtk_window_set_position(_window, Gtk.GtkWinPosCenter);
         Gtk.gtk_window_set_default_size(_window, Width, Math.Clamp(height, MinHeight, MaxHeight));
         var hints = new Gtk.GdkGeometry { MinWidth = Width, MaxWidth = Width, MinHeight = MinHeight, MaxHeight = MaxHeight };
@@ -107,6 +109,16 @@ internal sealed unsafe class MainWindow
         Pane.Dispose();
         Gtk.gtk_widget_destroy(_window);
         GtkLoop.FreeLater(_self);
+    }
+
+    private static nint EmptyTitlebar()
+    {
+        nint provider = Gtk.gtk_css_provider_new();
+        Gtk.gtk_css_provider_load_from_data(provider, "window, window.csd, decoration { box-shadow: none; margin: 0; border-radius: 0; border: none; outline: none; } headerbar, .titlebar { min-height: 0; padding: 0; margin: 0; border: none; background: none; }", -1, 0);
+        Gtk.gtk_style_context_add_provider_for_screen(Gtk.gdk_screen_get_default(), provider, 800);
+        nint bar = Gtk.gtk_fixed_new();
+        Gtk.gtk_widget_set_size_request(bar, 0, 0);
+        return bar;
     }
 
     private nint Strip(int align, int edge, nint data)
