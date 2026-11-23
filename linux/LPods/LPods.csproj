@@ -33,9 +33,12 @@
     <Compile Include="$(UpstreamDir)Nearby\NearbyService.cs" Link="Upstream\Nearby\NearbyService.cs" />
     <Compile Include="$(UpstreamDir)Nearby\Proximity.cs" Link="Upstream\Nearby\Proximity.cs" />
     <Compile Include="$(UpstreamDir)Ui\Localization.cs" Link="Upstream\Ui\Localization.cs" />
+    <Compile Include="$(UpstreamDir)Ui\Protocol.cs" Link="Upstream\Ui\Protocol.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Ui\linux.js;Ui\linux.css" Link="ui\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)web\**" Link="web\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="$(UpstreamDir)locales\*.json" Link="locales\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="$(UpstreamDir)..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="$(UpstreamDir)..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />

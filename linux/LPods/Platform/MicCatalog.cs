@@ -3,7 +3,13 @@ using WPods.Core;
 namespace WPods.Audio;
 
 /// <summary>One entry of a mic picker (upstream shape, without the processing stage).</summary>
-internal sealed record MicOption(string Id, string Name);
+internal sealed record MicOption(string Id, string Name)
+{
+    public string Weight => "light";
+    public int Threads => 1;
+    public int Mmacs => 0;
+    public float LatencyMs => 0;
+}
 
 /// <summary>
 /// Linux stand-in for upstream's MicCatalog: the same model ids, so settings.json round-trips between platforms, but

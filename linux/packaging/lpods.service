@@ -1,11 +1,11 @@
 [Unit]
 Description=LPods: AirPods features on Linux
 Documentation=https://github.com/pagoru/lpods/tree/main/linux
-After=bluetooth.target pipewire.service
+After=bluetooth.target pipewire.service graphical-session.target
 Wants=bluetooth.target
 
 [Service]
-ExecStart=%h/.local/bin/lpods
+ExecStart=%h/.local/bin/lpods daemon
 Restart=on-failure
 RestartSec=5
 

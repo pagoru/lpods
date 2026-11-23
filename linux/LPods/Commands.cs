@@ -8,7 +8,8 @@ namespace LPods;
 internal sealed class Commands(ConnectionManager connections)
 {
     public const string Help = """
-        lpods                              run in the background (tray-less daemon)
+        lpods [open]                       show the window (starts LPods if it is not running)
+        lpods daemon                       run in the background, in the tray
         lpods status [--json]              battery, ear and settings of the connected AirPods
         lpods devices                      paired AirPods
         lpods watch                        print status as JSON on every change
@@ -26,11 +27,16 @@ internal sealed class Commands(ConnectionManager connections)
         lpods profile a2dp|headset         pin the PipeWire profile of the connected AirPods
         """;
 
+    /// <summary>Shows the main window; null when there is no desktop session.</summary>
+    public Action? OpenWindow { get; set; }
+
     public async Task<JsonNode?> RunAsync(string[] args)
     {
         string command = args.Length > 0 ? args[0] : "status";
         switch (command)
         {
+            case "open":
+                return OpenWindow is { } open ? Open(open) : throw new CommandException("no desktop session: the window needs a display");
             case "status":
                 return Status.Build(connections);
             case "devices":
@@ -48,6 +54,12 @@ internal sealed class Commands(ConnectionManager connections)
             default:
                 throw new CommandException($"unknown command '{command}'\n\n{Help}");
         }
+    }
+
+    private static JsonNode Open(Action open)
+    {
+        open();
+        return Ok();
     }
 
     private async Task<JsonNode?> ConnectAsync(string? text)

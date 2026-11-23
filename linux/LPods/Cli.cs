@@ -44,7 +44,7 @@ internal static class Cli
         }
         catch (SocketException)
         {
-            Console.Error.WriteLine("lpods is not running. Start it with `lpods` (or `systemctl --user enable --now lpods`).");
+            Console.Error.WriteLine("lpods is not running. Start it with `lpods daemon` (or `systemctl --user enable --now lpods`).");
             return 2;
         }
     }

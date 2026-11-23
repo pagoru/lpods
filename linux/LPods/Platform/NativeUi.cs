@@ -21,4 +21,20 @@ internal static class NativeUi
         }
         return "en-US";
     }
+
+    /// <summary>The language's name in that language ("español (España)"), for the "Same as the system" row.</summary>
+    public static string NativeDisplayName(string tag)
+    {
+        try
+        {
+            return System.Globalization.CultureInfo.GetCultureInfo(tag).NativeName;
+        }
+        catch (System.Globalization.CultureNotFoundException)
+        {
+            return tag;
+        }
+    }
+
+    /// <summary>Upstream maps Windows virtual keys to characters; there are no Windows hotkeys on Linux.</summary>
+    public static uint MapVirtualKey(uint code, uint mapType) => 0;
 }
