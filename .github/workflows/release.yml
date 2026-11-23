@@ -1,5 +1,6 @@
 name: Release
 
+# Linux only: a v* tag builds the Fedora RPM and publishes a GitHub release with it.
 on:
   push:
     tags:
@@ -10,28 +11,33 @@ permissions:
 
 jobs:
   release:
-    runs-on: [self-hosted, windows]
+    runs-on: ubuntu-latest
+    container: fedora:latest
     steps:
-      - uses: actions/checkout@v5
+      - name: Install build tools
+        run: >
+          dnf install -y --setopt=install_weak_deps=False
+          dotnet-sdk-10.0 nodejs npm rpm-build desktop-file-utils systemd-rpm-macros git tar gzip gh
 
-      - name: Check tag matches build.ps1
-        shell: pwsh
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the spec version
         run: |
-          $version = (Select-String -Path build.ps1 -Pattern "^\`$Version = '([^']+)'").Matches[0].Groups[1].Value
-          if ($env:GITHUB_REF_NAME -ne "v$version") {
-            throw "Tag $env:GITHUB_REF_NAME does not match build.ps1 version $version (expected v$version)"
-          }
+          version=$(rpmspec -q --qf '%{version}\n' linux/packaging/lpods.spec | head -1)
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "Tag $GITHUB_REF_NAME does not match spec version $version"; exit 1; }
 
-      - name: Build
-        shell: pwsh
-        run: ./build.ps1
+      - name: Build the web pages
+        run: cd ui && npm ci --no-audit --no-fund && node build.mjs
 
-      - name: Create draft release
-        shell: pwsh
+      - name: Build the RPM
+        run: |
+          version=$(rpmspec -q --qf '%{version}\n' linux/packaging/lpods.spec | head -1)
+          mkdir -p ~/rpmbuild/SOURCES
+          git config --global --add safe.directory "$PWD"
+          git archive --prefix="lpods-$version/" -o ~/rpmbuild/SOURCES/lpods-$version.tar.gz HEAD
+          rpmbuild -bb linux/packaging/lpods.spec
+
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create $env:GITHUB_REF_NAME dist/WPods-Setup.exe --draft --title $env:GITHUB_REF_NAME --notes ''
-          if ($LASTEXITCODE -ne 0) {
-            throw "gh release create failed ($LASTEXITCODE)"
-          }
+        run: gh release create "$GITHUB_REF_NAME" ~/rpmbuild/RPMS/noarch/lpods-*.rpm --repo "$GITHUB_REPOSITORY" --title "LPods ${GITHUB_REF_NAME#v}" --generate-notes
