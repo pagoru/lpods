@@ -28,6 +28,33 @@ internal static class PipeWire
         return Mac.TryParse(sink.AsSpan(prefix.Length, 17).ToString().Replace('_', ':'), out ulong address) ? address : 0;
     }
 
+    /// <summary>Volume of the default sink as a fraction (1.0 = 100 %), the mean of its channels; null when unreadable.</summary>
+    public static float? DefaultSinkVolume()
+    {
+        return ParseVolume(Pactl("get-sink-volume", "@DEFAULT_SINK@"));
+    }
+
+    /// <summary>"Volume: front-left: 42598 /  65% / -11.23 dB,   front-right: 42598 /  65% / -11.23 dB" -> 0.65.</summary>
+    internal static float? ParseVolume(string text)
+    {
+        var raw = new List<int>();
+        foreach (string part in text.Split(','))
+        {
+            int colon = part.LastIndexOf(':');
+            int slash = part.IndexOf('/', StringComparison.Ordinal);
+            if (colon >= 0 && slash > colon && int.TryParse(part.AsSpan(colon + 1, slash - colon - 1).Trim(), out int value))
+            {
+                raw.Add(value);
+            }
+        }
+        return raw.Count == 0 ? null : (float)raw.Average() / NormalVolume;
+    }
+
+    public static void SetDefaultSinkVolume(float fraction) =>
+        Pactl("set-sink-volume", "@DEFAULT_SINK@", ((int)MathF.Round(Math.Clamp(fraction, 0f, 1.5f) * NormalVolume)).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    private const int NormalVolume = 65536;
+
     public static string? DefaultSink() => Pactl("get-default-sink").Trim() is { Length: > 0 } sink ? sink : null;
 
     public static string? ActiveProfile(string card) => CardBlock(card)

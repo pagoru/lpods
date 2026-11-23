@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using LPods.Platform;
+using WPods.Audio;
 using WPods.Core;
 using WPods.Nearby;
+using WPods.Ui;
 
 namespace LPods;
 
@@ -30,6 +32,12 @@ internal static class Daemon
         // Opening the case releases a pair the user disconnected while the link is still up.
         nearby.CaseOpened += connections.OnCaseOpened;
         using var defaultOutput = new DefaultOutputWatcher(connections);
+        using var ducker = new ConversationDucker(connections);
+        _ = new EarPause(connections);
+        Localization? locales = Localization.Load(Path.Combine(AppContext.BaseDirectory, "locales"));
+        ResolvedLocale? locale = locales?.Resolve(settings.Ui.Language);
+        Func<string, string> text = key => locale?.Text(key) ?? key;
+        _ = new LowBattery(connections, text);
         using var changes = new Changes(connections);
         using var control = new Control(new Commands(connections), connections, changes);
 

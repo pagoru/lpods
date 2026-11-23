@@ -10,17 +10,29 @@ internal sealed class MockBus : IDisposable
 {
     private static readonly string Script = Path.Combine(AppContext.BaseDirectory, "bluez_mock.py");
     private readonly Process _daemon;
-    private readonly Process _bluez;
+    private readonly Process? _bluez;
     private readonly string _python;
 
-    private MockBus(Process daemon, Process bluez, string python)
+    private MockBus(Process daemon, Process? bluez, string python)
     {
         _daemon = daemon;
         _bluez = bluez;
         _python = python;
     }
 
-    public static async Task<MockBus?> StartAsync()
+    /// <summary>A bus with BlueZ on it, as the system bus.</summary>
+    public static Task<MockBus?> StartAsync() => StartAsync(bluez: true);
+
+    /// <summary>
+    /// A bus for session services (DBUS_SESSION_BUS_ADDRESS), no BlueZ. Runs <paramref name="script"/> helpers with it.
+    /// </summary>
+    public static Task<MockBus?> StartSessionAsync() => StartAsync(bluez: false);
+
+    public Task RunScriptAsync(string script, params string[] args) => RunsAsync(_python, [Path.Combine(AppContext.BaseDirectory, script), .. args]).ContinueWith(
+        t => t.Result ? Task.CompletedTask : throw new InvalidOperationException($"{script} {string.Join(' ', args)} failed"),
+        TaskScheduler.Default).Unwrap();
+
+    private static async Task<MockBus?> StartAsync(bool bluez)
     {
         string python = Environment.GetEnvironmentVariable("LPODS_TEST_PYTHON") ?? "python3";
         if (!await RunsAsync(python, "-c", "import dbus, dbusmock") || !await RunsAsync("dbus-daemon", "--version"))
@@ -33,10 +45,14 @@ internal sealed class MockBus : IDisposable
             UseShellExecute = false,
         })!;
         string address = (await daemon.StandardOutput.ReadLineAsync())!.Trim();
+        if (!bluez)
+        {
+            Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", address);
+            return new MockBus(daemon, null, python);
+        }
         Environment.SetEnvironmentVariable("DBUS_SYSTEM_BUS_ADDRESS", address);
         var info = new ProcessStartInfo(python, "-m dbusmock --system --template bluez5") { UseShellExecute = false, RedirectStandardOutput = true };
-        var bluez = Process.Start(info)!;
-        var bus = new MockBus(daemon, bluez, python);
+        var bus = new MockBus(daemon, Process.Start(info)!, python);
         // The template is up once its mock interface answers.
         for (int i = 0; i < 100 && !await RunsAsync(python, Script, "adapter"); i++)
         {
@@ -51,9 +67,10 @@ internal sealed class MockBus : IDisposable
 
     public void Dispose()
     {
-        _bluez.Kill();
+        _bluez?.Kill();
+        // Helpers started on a session bus exit with it.
         _daemon.Kill();
-        _bluez.Dispose();
+        _bluez?.Dispose();
         _daemon.Dispose();
     }
 

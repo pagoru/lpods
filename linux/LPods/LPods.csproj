@@ -32,6 +32,13 @@
     <Compile Include="$(UpstreamDir)Core\SettingsStore.cs" Link="Upstream\Core\SettingsStore.cs" />
     <Compile Include="$(UpstreamDir)Nearby\NearbyService.cs" Link="Upstream\Nearby\NearbyService.cs" />
     <Compile Include="$(UpstreamDir)Nearby\Proximity.cs" Link="Upstream\Nearby\Proximity.cs" />
+    <Compile Include="$(UpstreamDir)Ui\Localization.cs" Link="Upstream\Ui\Localization.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="$(UpstreamDir)locales\*.json" Link="locales\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(UpstreamDir)..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
